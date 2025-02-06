@@ -12,7 +12,7 @@ def get_fun_fact(n):
     if cached_fact:
         return cached_fact
 
-    url = f"http://numbersapi.com/{n}/math?json"  
+    url = f"http://numbersapi.com/{n}/math?json"  # 
     try:
         response = requests.get(url)
         data = response.json()
