@@ -75,7 +75,7 @@ def classify_number_view(request):
     if number < 0:
         return JsonResponse({
             "number": number,
-            "error": "Negative numbers are not supported !!!!!",
+            "error": "Negative numbers are not supported",
         }, status=400)
 
     response = classify_number(number)
