@@ -12,9 +12,9 @@ def get_fun_fact(n):
     if cached_fact:
         return cached_fact
 
-    url = f"http://numbersapi.com/{n}/math?json"  # 
+    url = f"http://numbersapi.com/{n}/math?json"
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)  # Add timeout to prevent long waits
         data = response.json()
         fact = data.get("text", "No fun fact found.")
         cache.set(cache_key, fact, timeout=86400)  # Cache for 24 hours
@@ -33,7 +33,13 @@ def is_prime(n):
 
 
 def is_perfect(n):
-    return sum(i for i in range(1, n) if n % i == 0) == n
+    if n < 2:
+        return False
+    divisors = {1}
+    for i in range(2, int(math.sqrt(n)) + 1):
+        if n % i == 0:
+            divisors.update({i, n // i})
+    return sum(divisors) == n
 
 
 def is_armstrong(n):
@@ -42,15 +48,10 @@ def is_armstrong(n):
 
 
 def classify_number(n):
-    properties = []
-
-    if n % 2 == 0:
-        properties.append('even')
-    else:
-        properties.append('odd')
+    properties = ["even" if n % 2 == 0 else "odd"]
 
     if is_armstrong(n):
-        properties.append('armstrong')
+        properties.append("armstrong")
 
     return {
         "number": n,
@@ -66,18 +67,14 @@ def classify_number(n):
 def classify_number_view(request):
     number = request.GET.get("number")
 
-    # Validate input: ensure it's an integer
-    if not number or not number.lstrip('-').isdigit():
-        return JsonResponse({"number": number, "error": "Invalid input. Must be an integer."}, status=400)
-
-    number = int(number)  # Convert to integer before checking negativity
+    # Validate input
+    try:
+        number = int(number.strip())  # Strips spaces and converts safely
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Invalid input. Must be an integer."}, status=400)
 
     if number < 0:
-        return JsonResponse({
-            "number": number,
-            "error": "Negative numbers are not supported",
-        }, status=400)
+        return JsonResponse({"error": "Negative numbers are not supported."}, status=400)
 
     response = classify_number(number)
     return JsonResponse(response, status=200)
-
