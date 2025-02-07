@@ -5,87 +5,78 @@ from django.views.decorators.http import require_GET
 from django.core.cache import cache
 
 
-# ✅ 1️⃣ Optimize Fun Fact with Caching
 def get_fun_fact(n):
     cache_key = f"fun_fact_{n}"
     cached_fact = cache.get(cache_key)
 
     if cached_fact:
-        return cached_fact  # ✅ Return immediately if cached
+        return cached_fact
 
-    url = f"http://numbersapi.com/{n}/math?json"
+    url = f"http://numbersapi.com/{n}/math?json"  # 
     try:
-        response = requests.get(url, timeout=2)  # ⏳ Set a timeout for fast response
+        response = requests.get(url)
         data = response.json()
         fact = data.get("text", "No fun fact found.")
-        cache.set(cache_key, fact, timeout=86400)  # ✅ Store fact for 24 hours
+        cache.set(cache_key, fact, timeout=86400)  # Cache for 24 hours
         return fact
     except requests.exceptions.RequestException:
-        return "Could not fetch fun fact"  # Fallback if API fails
+        return "Could not fetch fun fact"
+
 
 def is_prime(n):
     if n < 2:
         return False
-    if n in (2, 3):
-        return True
-    if n % 2 == 0 or n % 3 == 0:
-        return False
-    for i in range(5, int(math.sqrt(n)) + 1, 2):  
+    for i in range(2, int(math.sqrt(n)) + 1):
         if n % i == 0:
             return False
     return True
 
-def is_perfect(n):
-    if n < 2:
-        return False
-    divisors = {1}
-    for i in range(2, int(math.sqrt(n)) + 1):
-        if n % i == 0:
-            divisors.update({i, n // i})
-    return sum(divisors) == n
 
+def is_perfect(n):
+    return sum(i for i in range(1, n) if n % i == 0) == n
 
 
 def is_armstrong(n):
-    digits = list(map(int, str(n)))
-    power = len(digits)
-    return sum(d ** power for d in digits) == n
+    digits = [int(d) for d in str(n)]
+    return sum(d ** len(digits) for d in digits) == n
+
 
 def classify_number(n):
-    cache_key = f"classify_{n}"
-    cached_result = cache.get(cache_key)
+    properties = []
 
-    if cached_result:
-        return cached_result  # ✅ Return cached result if available
+    if n % 2 == 0:
+        properties.append('even')
+    else:
+        properties.append('odd')
 
-    properties = ["even" if n % 2 == 0 else "odd"]
     if is_armstrong(n):
-        properties.append("armstrong")
+        properties.append('armstrong')
 
-    result = {
+    return {
         "number": n,
         "is_prime": is_prime(n),
         "is_perfect": is_perfect(n),
         "properties": properties,
         "digit_sum": sum(int(d) for d in str(n)),
-        "fun_fact": get_fun_fact(n)
+        "fun_fact": get_fun_fact(n),
     }
 
-    cache.set(cache_key, result, timeout=86400)  # ✅ Store result in cache
-    return result
 
-
-# ✅ 6️⃣ Validate Input and Handle Requests
 @require_GET
 def classify_number_view(request):
     number = request.GET.get("number")
 
-    try:
-        number = int(number.strip())  # ✅ Convert safely
-    except (ValueError, TypeError):
-        return JsonResponse({"error": "Invalid input. Must be an integer."}, status=400)
+    # Validate input: ensure it's an integer
+    if not number or not number.lstrip('-').isdigit():
+        return JsonResponse({"number": number, "error": "Invalid input. Must be an integer."}, status=400)
+
+    number = int(number)  # Convert to integer before checking negativity
 
     if number < 0:
-        return JsonResponse({"error": "Negative numbers are not supported."}, status=400)
+        return JsonResponse({
+            "number": number,
+            "error": "Negative numbers are not supported",
+        }, status=400)
 
-    return JsonResponse(classify_number(number), status=200)
+    response = classify_number(number)
+    return JsonResponse(response, status=200)
