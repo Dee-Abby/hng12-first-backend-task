@@ -1,30 +1,27 @@
 import math
 import requests
-import threading
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.core.cache import cache
 
 
-
+# ✅ 1️⃣ Optimize Fun Fact with Caching
 def get_fun_fact(n):
     cache_key = f"fun_fact_{n}"
     cached_fact = cache.get(cache_key)
 
     if cached_fact:
-        return cached_fact
+        return cached_fact  # ✅ Return immediately if cached
 
     url = f"http://numbersapi.com/{n}/math?json"
     try:
-        response = requests.get(url, timeout=2)  # ⏳ Reduce timeout to prevent delays
+        response = requests.get(url, timeout=2)  # ⏳ Set a timeout for fast response
         data = response.json()
         fact = data.get("text", "No fun fact found.")
-        cache.set(cache_key, fact, timeout=86400)  # Cache for 24 hours
+        cache.set(cache_key, fact, timeout=86400)  # ✅ Store fact for 24 hours
         return fact
     except requests.exceptions.RequestException:
-        return "Could not fetch fun fact"
-
-
+        return "Could not fetch fun fact"  # Fallback if API fails
 
 def is_prime(n):
     if n < 2:
@@ -33,7 +30,7 @@ def is_prime(n):
         return True
     if n % 2 == 0 or n % 3 == 0:
         return False
-    for i in range(5, int(math.sqrt(n)) + 1, 2):  # Skip evens, start from 5
+    for i in range(5, int(math.sqrt(n)) + 1, 2):  
         if n % i == 0:
             return False
     return True
@@ -54,14 +51,12 @@ def is_armstrong(n):
     power = len(digits)
     return sum(d ** power for d in digits) == n
 
-
-
 def classify_number(n):
     cache_key = f"classify_{n}"
     cached_result = cache.get(cache_key)
 
     if cached_result:
-        return cached_result
+        return cached_result  # ✅ Return cached result if available
 
     properties = ["even" if n % 2 == 0 else "odd"]
     if is_armstrong(n):
@@ -73,28 +68,20 @@ def classify_number(n):
         "is_perfect": is_perfect(n),
         "properties": properties,
         "digit_sum": sum(int(d) for d in str(n)),
-        "fun_fact": "Fetching..."  # Temporary placeholder
+        "fun_fact": get_fun_fact(n)
     }
 
-    
-    cache.set(cache_key, result, timeout=86400)  # Cache for 24 hours
-
-    
-    def fetch_fun_fact():
-        result["fun_fact"] = get_fun_fact(n)
-        cache.set(cache_key, result, timeout=86400)  # Update cache with fun fact
-
-    threading.Thread(target=fetch_fun_fact).start()
-
+    cache.set(cache_key, result, timeout=86400)  # ✅ Store result in cache
     return result
 
 
+# ✅ 6️⃣ Validate Input and Handle Requests
 @require_GET
 def classify_number_view(request):
     number = request.GET.get("number")
 
     try:
-        number = int(number.strip())  # Convert safely
+        number = int(number.strip())  # ✅ Convert safely
     except (ValueError, TypeError):
         return JsonResponse({"error": "Invalid input. Must be an integer."}, status=400)
 
